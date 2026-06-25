@@ -3,8 +3,16 @@ from pydantic import BaseModel
 
 app = FastAPI(
     title="A5 Analytics Service",
-    version="0.1.0"
+    version="0.2.0"
 )
+
+# =====================
+# IN-MEMORY STORAGE
+# =====================
+
+camera_events = []
+access_events = []
+iot_readings = []
 
 # =====================
 # MODELS
@@ -32,15 +40,30 @@ class CameraEvent(BaseModel):
     timestamp: str
 
 
+class AccessEvent(BaseModel):
+    gate_id: str
+    action: str
+    timestamp: str
+
+
+class IoTReading(BaseModel):
+    device_id: str
+    metric: str
+    value: float
+    unit: str
+    timestamp: str
+
+
 # =====================
-# API
+# ROOT
 # =====================
 
 @app.get("/")
 def root():
     return {
         "service": "Analytics",
-        "group": "A5"
+        "group": "A5",
+        "version": "0.2.0"
     }
 
 
@@ -51,43 +74,140 @@ def health():
     }
 
 
+# =====================
+# DASHBOARD
+# =====================
+
 @app.get(
     "/dashboard",
     response_model=DashboardResponse
 )
 def dashboard():
+
     return DashboardResponse(
-        total_visitors=1250,
-        total_alerts=12,
-        active_cameras=18
+        total_visitors=len(access_events),
+        total_alerts=len(camera_events),
+        active_cameras=len(
+            set(
+                [
+                    event["camera_id"]
+                    for event in camera_events
+                ]
+            )
+        )
     )
 
+
+# =====================
+# CAMERA ANALYTICS
+# =====================
 
 @app.get(
     "/analytics/cameras",
     response_model=CameraAnalyticsResponse
 )
 def camera_analytics():
-    return CameraAnalyticsResponse(
-        camera_events=340,
-        motion_detected=95
+
+    motion_count = len(
+        [
+            e for e in camera_events
+            if e["event_type"] == "motion_detected"
+        ]
     )
 
+    return CameraAnalyticsResponse(
+        camera_events=len(camera_events),
+        motion_detected=motion_count
+    )
+
+
+# =====================
+# ACCESS ANALYTICS
+# =====================
 
 @app.get(
     "/analytics/access",
     response_model=AccessAnalyticsResponse
 )
 def access_analytics():
+
+    entries = len(
+        [
+            e for e in access_events
+            if e["action"] == "entry"
+        ]
+    )
+
+    exits = len(
+        [
+            e for e in access_events
+            if e["action"] == "exit"
+        ]
+    )
+
     return AccessAnalyticsResponse(
-        entries=520,
-        exits=498
+        entries=entries,
+        exits=exits
     )
 
 
+# =====================
+# RECEIVE CAMERA EVENT
+# =====================
+
 @app.post("/analytics/camera-events")
 def receive_camera_event(event: CameraEvent):
+
+    camera_events.append(event.model_dump())
+
     return {
         "message": "Camera event received",
+        "total_events": len(camera_events),
         "data": event
+    }
+
+
+# =====================
+# RECEIVE ACCESS EVENT
+# =====================
+
+@app.post("/analytics/access-events")
+def receive_access_event(event: AccessEvent):
+
+    access_events.append(event.model_dump())
+
+    return {
+        "message": "Access event received",
+        "total_events": len(access_events),
+        "data": event
+    }
+
+
+# =====================
+# RECEIVE IOT READING
+# =====================
+
+@app.post("/analytics/iot-readings")
+def receive_iot_reading(reading: IoTReading):
+
+    iot_readings.append(reading.model_dump())
+
+    return {
+        "message": "IoT reading received",
+        "total_readings": len(iot_readings),
+        "data": reading
+    }
+
+
+# =====================
+# VIEW RAW DATA
+# =====================
+
+@app.get("/analytics/raw")
+def raw_data():
+
+    return {
+        "camera_events": camera_events,
+        "access_events": access_events,
+        "iot_readings": iot_readings
     }
