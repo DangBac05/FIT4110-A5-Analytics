@@ -1,0 +1,112 @@
+openapi: 3.0.3
+
+info:
+  title: A5 Analytics Service API
+  description: Analytics service for Smart Campus Platform
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8000
+
+paths:
+
+  /health:
+    get:
+      summary: Health Check
+      responses:
+        '200':
+          description: Service is healthy
+
+  /dashboard:
+    get:
+      summary: Dashboard Statistics
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+
+  /analytics/cameras:
+    get:
+      summary: Camera Analytics
+      responses:
+        '200':
+          description: Camera statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CameraAnalyticsResponse'
+
+  /analytics/access:
+    get:
+      summary: Access Analytics
+      responses:
+        '200':
+          description: Access statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessAnalyticsResponse'
+
+  /analytics/camera-events:
+    post:
+      summary: Receive Camera Event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CameraEvent'
+
+      responses:
+        '200':
+          description: Event received successfully
+
+components:
+
+  schemas:
+
+    DashboardResponse:
+      type: object
+      properties:
+        total_visitors:
+          type: integer
+        total_alerts:
+          type: integer
+        active_cameras:
+          type: integer
+
+    CameraAnalyticsResponse:
+      type: object
+      properties:
+        camera_events:
+          type: integer
+        motion_detected:
+          type: integer
+
+    AccessAnalyticsResponse:
+      type: object
+      properties:
+        entries:
+          type: integer
+        exits:
+          type: integer
+
+    CameraEvent:
+      type: object
+      required:
+        - camera_id
+        - event_type
+        - timestamp
+
+      properties:
+        camera_id:
+          type: string
+
+        event_type:
+          type: string
+
+        timestamp:
+          type: string
